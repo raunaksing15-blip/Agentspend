@@ -1,0 +1,22 @@
+{
+  "name": "agentspend",
+  "version": "0.2.0",
+  "private": true,
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev:api": "npm --workspace @agentspend/api run dev",
+    "build:api": "npm --workspace @agentspend/api run build",
+    "test:api": "npm --workspace @agentspend/api test",
+    "dev:web": "npm --workspace @agentspend/web run dev",
+    "build:web": "npm --workspace @agentspend/web run build",
+    "test:contract": "cd contracts/agentspend && cargo test",
+    "build:contract": "cd contracts/agentspend && cargo build --target wasm32-unknown-unknown --release",
+    "test:sandbox": "cd contracts/agentspend && node --test tests-sandbox/async.test.cjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
