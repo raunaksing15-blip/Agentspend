@@ -16,11 +16,11 @@ Example body:
   "recipient": "vendor.test.near",
   "amountYocto": "500000000000000000000000",
   "purpose": "API credits",
-  "expiresAtNs": 1794500000000000000
+  "expiresAtNs": "1794500000000000000"
 }
 ```
 
-The agent identity is loaded from `AGENT_ACCOUNT_ID`, not accepted from the body. The API returns `executionMode: SIMULATED`, `onChain: false`, and `nearTxHash: null`.
+The agent identity is loaded from `AGENT_ACCOUNT_ID`, not accepted from the body. Expiration is a decimal string validated against a 24-hour maximum to avoid JavaScript integer precision loss. The API returns `executionMode: SIMULATED`, `onChain: false`, and `nearTxHash: null`.
 
 ## `POST /api/transactions/:id/approve` and `/reject`
 Return HTTP 410. Backend approval is intentionally not an authority. The owner must sign the contract call with the owner account.

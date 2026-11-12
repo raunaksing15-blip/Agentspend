@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const N = 10n ** 24n;
 const WASM = 'target/wasm32-unknown-unknown/release/agentspend.wasm';
 let worker, root, firewall, agent, vendor;
+const testSerial = (name, fn) => test(name, { concurrency: false }, fn);
 
 beforeEach(async () => {
   worker = await Worker.init();            // downloads neard sandbox on first run
@@ -31,7 +32,7 @@ afterEach(async () => { await worker.tearDown(); });
 
 const expires = () => (Date.now() + 3_600_000) * 1_000_000;
 
-test('happy path: real transfer settles Executed and moves recipient balance', async () => {
+testSerial('happy path: real transfer settles Executed and moves recipient balance', async () => {
   const before = BigInt((await vendor.getAccountBalance()).available);
   const res = await agent.call(firewall, 'request_payment', {
     id: 'ok-1', recipient: vendor.id, amount: (N / 2n).toString(),
@@ -50,7 +51,7 @@ test('happy path: real transfer settles Executed and moves recipient balance', a
   assert.equal(stats.tx_count, 1);
 });
 
-test('GENUINE async failure: allowlisted but non-existent recipient -> Failed + budget restored', async () => {
+testSerial('GENUINE async failure: allowlisted but non-existent recipient -> Failed + budget restored', async () => {
   const ghost = `ghost-${Date.now()}.test.near`;   // never created on chain
   await root.call(firewall, 'add_recipient', { recipient: ghost });
 
@@ -70,7 +71,7 @@ test('GENUINE async failure: allowlisted but non-existent recipient -> Failed + 
   assert.equal((await firewall.view('audit_invariants', {})).pending_matches, true);
 });
 
-test('replay: same id cannot execute twice, recipient paid once', async () => {
+testSerial('replay: same id cannot execute twice, recipient paid once', async () => {
   const args = { id: 'rep-1', recipient: vendor.id, amount: (N / 2n).toString(),
                  purpose: 'x', expires_at_ns: expires() };
   await agent.call(firewall, 'request_payment', args);
@@ -81,7 +82,7 @@ test('replay: same id cannot execute twice, recipient paid once', async () => {
   assert.equal(after, before);
 });
 
-test('agent full-access key still cannot approve (contract-level authority)', async () => {
+testSerial('agent full-access key still cannot approve (contract-level authority)', async () => {
   await agent.call(firewall, 'request_payment', {
     id: 'appr-1', recipient: vendor.id, amount: (3n * N / 2n).toString(),
     purpose: 'needs human', expires_at_ns: expires(),
@@ -94,7 +95,7 @@ test('agent full-access key still cannot approve (contract-level authority)', as
   assert.equal(tx.status, 'PendingApproval');
 });
 
-test('owner approval executes and emits payment_executed event', async () => {
+testSerial('owner approval executes and emits payment_executed event', async () => {
   await agent.call(firewall, 'request_payment', {
     id: 'appr-2', recipient: vendor.id, amount: (3n * N / 2n).toString(),
     purpose: 'server upgrade', expires_at_ns: expires(),
@@ -107,7 +108,7 @@ test('owner approval executes and emits payment_executed event', async () => {
   assert.equal(tx.status, 'Executed');
 });
 
-test('prompt-injection blast radius: injected agent cannot redirect funds', async () => {
+testSerial('prompt-injection blast radius: injected agent cannot redirect funds', async () => {
   const attacker = await root.createSubAccount('attacker');
   const out = await agent.call(firewall, 'request_payment', {
     id: 'inject-1', recipient: attacker.id, amount: (2n * N).toString(),
@@ -119,7 +120,7 @@ test('prompt-injection blast radius: injected agent cannot redirect funds', asyn
   assert.equal(BigInt((await attacker.getAccountBalance()).available) > 0n, false);
 });
 
-test('daily limit counts pending reservations (no approval-time bypass)', async () => {
+testSerial('daily limit counts pending reservations (no approval-time bypass)', async () => {
   for (const [id, amt] of [['d1', 3n*N/2n], ['d2', 3n*N/2n], ['d3', 3n*N/2n]]) {
     await agent.call(firewall, 'request_payment', {
       id, recipient: vendor.id, amount: amt.toString(),

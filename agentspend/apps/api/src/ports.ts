@@ -6,7 +6,7 @@ export interface RequestInput {
   recipient: string;
   amountYocto: string;
   purpose: string;
-  expiresAtNs: number;
+  expiresAtNs: string;
   agentId: string;
 }
 

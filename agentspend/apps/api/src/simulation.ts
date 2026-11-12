@@ -10,6 +10,7 @@ const YOCTO = 10n ** 24n;
 export class LocalSimulationChain implements ChainPort {
   contractId = 'SIMULATION_ONLY';
   private seen = new Set<string>();
+  private statuses = new Map<string, string>();
   private spent = 0n;
   private reserved = 0n;
   private recipients = new Set(['vendor.test.near', 'cloud.test.near']);
@@ -32,13 +33,20 @@ export class LocalSimulationChain implements ChainPort {
     this.seen.add(input.id);
     if (decision === 'APPROVED_FOR_EXECUTION') this.spent += amount;
     if (decision === 'PENDING_APPROVAL') this.reserved += amount;
-    return { decision, reason, status: decision === 'APPROVED_FOR_EXECUTION' ? 'SIMULATED_APPROVED' :
-      decision === 'PENDING_APPROVAL' ? 'SIMULATED_PENDING' : 'REJECTED' };
+    const status = decision === 'APPROVED_FOR_EXECUTION' ? 'SIMULATED_APPROVED' :
+      decision === 'PENDING_APPROVAL' ? 'PendingApproval' : 'REJECTED';
+    this.statuses.set(input.id, status);
+    return { decision, reason, status };
   }
 
   async submitAgentRequest(_input: RequestInput): Promise<{ transactionHash: string }> {
     throw new Error('TESTNET ChainPort adapter is not implemented; refusing to submit.');
   }
-  async awaitFinalOutcome(_hash: string) { throw new Error('TESTNET adapter unavailable.'); }
-  async viewTransaction(_id: string) { throw new Error('TESTNET adapter unavailable.'); }
+  async awaitFinalOutcome(_hash: string): Promise<{ transactionHash: string; receiptIds: string[] }> {
+    throw new Error('TESTNET adapter unavailable.');
+  }
+  async viewTransaction(id: string): Promise<{ status: string } | null> {
+    const status = this.statuses.get(id);
+    return status ? { status } : null;
+  }
 }

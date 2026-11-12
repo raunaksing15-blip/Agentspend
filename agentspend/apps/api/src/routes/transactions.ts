@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { Router } from 'express';
-import { requireOwnerSession } from '../auth.js';
+import { agentAuth, requireOwnerSession } from '../auth.js';
 import type { ChainPort, Db } from '../ports.js';
 
 const RequestSchema = z.object({
@@ -8,7 +8,11 @@ const RequestSchema = z.object({
   recipient: z.string().min(2).max(64),
   amountYocto: z.string().regex(/^\d+$/).refine(v => BigInt(v) > 0n),
   purpose: z.string().min(1).max(256),
-  expiresAtNs: z.number().int().positive(),
+  expiresAtNs: z.string().regex(/^\d+$/).refine(value => {
+    const expiresAt = BigInt(value);
+    const now = BigInt(Date.now()) * 1_000_000n;
+    return expiresAt > now && expiresAt <= now + 86_400_000_000_000n;
+  }, 'Expiration must be within the next 24 hours'),
 });
 
 export type ExecutionMode = 'SIMULATED' | 'TESTNET';
@@ -16,7 +20,7 @@ export type ExecutionMode = 'SIMULATED' | 'TESTNET';
 export function transactionsRouter(deps: { chain: ChainPort; db: Db; mode: ExecutionMode }) {
   const r = Router();
 
-  r.post('/request', async (req, res) => {
+  r.post('/request', agentAuth, async (req, res) => {
     const parsed = RequestSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'VALIDATION', issues: parsed.error.issues });
 
@@ -61,7 +65,8 @@ export function transactionsRouter(deps: { chain: ChainPort; db: Db; mode: Execu
   r.post('/:id/reject', gone);
 
   r.post('/:id/approval-intent', requireOwnerSession, async (req, res) => {
-    const tx = await deps.chain.viewTransaction(req.params.id);
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const tx = await deps.chain.viewTransaction(id);
     if (!tx) return res.status(404).json({ error: 'NOT_FOUND' });
     if (tx.status !== 'PendingApproval') return res.status(409).json({ error: 'NOT_PENDING' });
     res.json({
@@ -69,9 +74,9 @@ export function transactionsRouter(deps: { chain: ChainPort; db: Db; mode: Execu
       unsigned: {
         receiverId: deps.chain.contractId,
         actions: [{ type: 'FunctionCall', methodName: 'approve_payment',
-                    args: { id: req.params.id }, gas: '300000000000000', deposit: '0' }],
+                    args: { id }, gas: '300000000000000', deposit: '0' }],
       },
-      cliHint: `near contract call-function as-transaction ${deps.chain.contractId} approve_payment json-args '{"id":"${req.params.id}"}' prepaid-gas '30 Tgas' attached-deposit '0 NEAR' sign-as <OWNER> network-config testnet`,
+      cliHint: `near contract call-function as-transaction ${deps.chain.contractId} approve_payment json-args '{"id":"${id}"}' prepaid-gas '30 Tgas' attached-deposit '0 NEAR' sign-as <OWNER> network-config testnet`,
     });
   });
 
