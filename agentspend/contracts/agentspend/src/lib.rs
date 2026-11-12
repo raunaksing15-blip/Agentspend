@@ -26,7 +26,7 @@ const MAX_TTL_NS: u64 = DAY_NS;
 const STUCK_TIMEOUT_NS: u64 = 300_000_000_000;
 /// never spend the storage stake; keep 0.05 NEAR liquid headroom
 const LIQUID_BUFFER: u128 = 50_000_000_000_000_000_000_000; // 0.05 NEAR
-const MAX_STORAGE_BYTES: u64 = 200_000; // ~2 NEAR stake ceiling
+const MAX_STORAGE_BYTES: u64 = 1_000_000; // ~10 NEAR stake ceiling
 const MAX_ID_LEN: usize = 64;
 const MAX_PURPOSE_LEN: usize = 256;
 const MAX_RECIPIENTS: u32 = 64;
@@ -46,7 +46,10 @@ pub enum TxStatus {
 
 impl TxStatus {
     fn is_terminal(self) -> bool {
-        matches!(self, TxStatus::Executed | TxStatus::Rejected | TxStatus::Failed)
+        matches!(
+            self,
+            TxStatus::Executed | TxStatus::Rejected | TxStatus::Failed
+        )
     }
 }
 
@@ -66,6 +69,7 @@ pub struct Transaction {
     pub execution_started_ns: Option<u64>,
     pub decided_by: Option<AccountId>,
     pub reason: String,
+    pub receipt_ref: Option<String>,
 }
 
 #[near(serializers=[borsh, json])]
@@ -229,7 +233,10 @@ impl AgentSpend {
     pub fn propose_owner(&mut self, new_owner: AccountId) {
         self.assert_owner();
         self.proposed_owner = Some(new_owner.clone());
-        emit("owner_proposed", serde_json::json!({ "new_owner": new_owner }));
+        emit(
+            "owner_proposed",
+            serde_json::json!({ "new_owner": new_owner }),
+        );
     }
 
     pub fn accept_ownership(&mut self) {
@@ -248,10 +255,7 @@ impl AgentSpend {
     #[payable]
     pub fn fund(&mut self) {
         // Anyone may fund. Deposits cannot be redirected by the depositor.
-        require!(
-            env::attached_deposit().as_yoctonear() > 0,
-            "ERR_NO_DEPOSIT"
-        );
+        require!(env::attached_deposit().as_yoctonear() > 0, "ERR_NO_DEPOSIT");
         emit(
             "funded",
             serde_json::json!({
@@ -304,13 +308,19 @@ impl AgentSpend {
         );
         require!(recipient != env::current_account_id(), "ERR_SELF_RECIPIENT");
         self.policy.recipients.insert(recipient.clone());
-        emit("recipient_added", serde_json::json!({ "recipient": recipient }));
+        emit(
+            "recipient_added",
+            serde_json::json!({ "recipient": recipient }),
+        );
     }
 
     pub fn remove_recipient(&mut self, recipient: AccountId) {
         self.assert_owner();
         self.policy.recipients.remove(&recipient);
-        emit("recipient_removed", serde_json::json!({ "recipient": recipient }));
+        emit(
+            "recipient_removed",
+            serde_json::json!({ "recipient": recipient }),
+        );
     }
 
     pub fn upsert_agent(
@@ -404,7 +414,8 @@ impl AgentSpend {
         // --- shape validation (panics: no state written, no storage griefing)
         require!(!id.is_empty() && id.len() <= MAX_ID_LEN, "ERR_BAD_ID");
         require!(
-            id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_'),
+            id.bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_'),
             "ERR_BAD_ID_CHARS"
         );
         require!(purpose.len() <= MAX_PURPOSE_LEN, "ERR_PURPOSE_TOO_LONG");
@@ -412,13 +423,14 @@ impl AgentSpend {
         require!(expires_at_ns > now, "ERR_EXPIRED");
         require!(expires_at_ns <= now + MAX_TTL_NS, "ERR_TTL_TOO_LONG");
         require!(!self.paused, "ERR_PAUSED");
-        require!(
-            env::storage_usage() <= MAX_STORAGE_BYTES,
-            "ERR_STORAGE_CAP"
-        );
+        require!(env::storage_usage() <= MAX_STORAGE_BYTES, "ERR_STORAGE_CAP");
 
         self.roll_day();
-        let mut agent = self.agents.get(&agent_id).cloned().expect("ERR_UNAUTHORIZED_AGENT");
+        let mut agent = self
+            .agents
+            .get(&agent_id)
+            .cloned()
+            .expect("ERR_UNAUTHORIZED_AGENT");
         Self::roll_agent(&mut agent, self.day);
 
         // every well-formed attempt consumes quota, including duplicates
@@ -448,6 +460,7 @@ impl AgentSpend {
                 execution_started_ns: None,
                 decided_by: None,
                 reason: reason.clone(),
+                receipt_ref: None,
             };
             self.transactions.insert(id.clone(), tx);
             emit(
@@ -462,8 +475,17 @@ impl AgentSpend {
 
         // --- reserve budget BEFORE any async work or human decision
         self.seen_ids.insert(id.clone(), true);
-        self.reserved_total = self.reserved_total.checked_add(amount.0).expect("ERR_OVERFLOW");
-        agent.reserved = U128(agent.reserved.0.checked_add(amount.0).expect("ERR_OVERFLOW"));
+        self.reserved_total = self
+            .reserved_total
+            .checked_add(amount.0)
+            .expect("ERR_OVERFLOW");
+        agent.reserved = U128(
+            agent
+                .reserved
+                .0
+                .checked_add(amount.0)
+                .expect("ERR_OVERFLOW"),
+        );
 
         let needs_approval =
             amount.0 > self.policy.approval_threshold || agent.always_require_approval;
@@ -486,6 +508,7 @@ impl AgentSpend {
             } else {
                 "All policy checks passed".into()
             },
+            receipt_ref: None,
         };
 
         if needs_approval {
@@ -495,6 +518,7 @@ impl AgentSpend {
             );
             agent.pending_count += 1;
             self.pending.insert(id.clone());
+            let reason = tx.reason.clone();
             self.transactions.insert(id.clone(), tx);
             self.agents.insert(agent_id.clone(), agent);
             emit(
@@ -504,10 +528,7 @@ impl AgentSpend {
                     "threshold": self.policy.approval_threshold.to_string(),
                 }),
             );
-            return RequestOutcome::PendingApproval {
-                id,
-                reason: tx.reason,
-            };
+            return RequestOutcome::PendingApproval { id, reason };
         }
 
         tx.status = TxStatus::Executing;
@@ -533,7 +554,9 @@ impl AgentSpend {
             return Some("Duplicate transaction ID (replay blocked)".into());
         }
         if !self.policy.recipients.contains(recipient) {
-            return Some(format!("Recipient {recipient} is not on the approved allowlist"));
+            return Some(format!(
+                "Recipient {recipient} is not on the approved allowlist"
+            ));
         }
         if recipient == agent_id {
             return Some("Agent cannot pay itself".into());
@@ -553,10 +576,16 @@ impl AgentSpend {
             .checked_add(self.reserved_total)
             .expect("ERR_OVERFLOW");
         if committed.checked_add(amount).expect("ERR_OVERFLOW") > self.policy.daily_limit {
-            return Some("Amount exceeds remaining daily budget (pending reservations included)".into());
+            return Some(
+                "Amount exceeds remaining daily budget (pending reservations included)".into(),
+            );
         }
         if agent.daily_limit.0 > 0 {
-            let a_committed = agent.spent_today.0.checked_add(agent.reserved.0).expect("ERR_OVERFLOW");
+            let a_committed = agent
+                .spent_today
+                .0
+                .checked_add(agent.reserved.0)
+                .expect("ERR_OVERFLOW");
             if a_committed.checked_add(amount).expect("ERR_OVERFLOW") > agent.daily_limit.0 {
                 return Some("Amount exceeds this agent's daily budget".into());
             }
@@ -586,7 +615,13 @@ impl AgentSpend {
         self.spent_today = self.spent_today.checked_add(amount).expect("ERR_OVERFLOW");
         let mut agent = self.agents.get(&tx.agent).cloned().expect("ERR_NO_AGENT");
         agent.reserved = U128(agent.reserved.0.saturating_sub(amount));
-        agent.spent_today = U128(agent.spent_today.0.checked_add(amount).expect("ERR_OVERFLOW"));
+        agent.spent_today = U128(
+            agent
+                .spent_today
+                .0
+                .checked_add(amount)
+                .expect("ERR_OVERFLOW"),
+        );
         self.agents.insert(tx.agent.clone(), agent);
 
         tx.spent_day = Some(self.day);
@@ -603,14 +638,12 @@ impl AgentSpend {
 
         Promise::new(tx.recipient.clone())
             .transfer(NearToken::from_yoctonear(amount))
-            .then(
-                Promise::new(env::current_account_id()).function_call(
-                    "resolve_transfer".to_string(),
-                    serde_json::to_vec(&serde_json::json!({ "id": id })).unwrap(),
-                    NO_DEPOSIT,
-                    GAS_CALLBACK,
-                ),
-            );
+            .then(Promise::new(env::current_account_id()).function_call(
+                "resolve_transfer".to_string(),
+                serde_json::to_vec(&serde_json::json!({ "id": id })).unwrap(),
+                NO_DEPOSIT,
+                GAS_CALLBACK,
+            ));
         // Not returned: settlement is authoritative via callback + events.
         let _ = GAS_TRANSFER;
     }
@@ -619,9 +652,9 @@ impl AgentSpend {
     /// Guarded on `Executing` so a duplicate/late callback cannot double-settle.
     #[private]
     pub fn resolve_transfer(&mut self, id: String) {
-        require!(env::promise_results_count() == 1, "ERR_EXPECT_ONE_PROMISE");
         let mut tx = self.transactions.get(&id).cloned().expect("ERR_NO_TX");
         require!(tx.status == TxStatus::Executing, "ERR_NOT_EXECUTING");
+        require!(env::promise_results_count() == 1, "ERR_EXPECT_ONE_PROMISE");
 
         let succeeded = matches!(env::promise_result(0), PromiseResult::Successful(_));
         let amount = tx.amount.0;
@@ -631,8 +664,13 @@ impl AgentSpend {
             self.total_spent = self.total_spent.checked_add(amount).expect("ERR_OVERFLOW");
             self.tx_count += 1;
             let mut agent = self.agents.get(&tx.agent).cloned().expect("ERR_NO_AGENT");
-            agent.lifetime_executed =
-                U128(agent.lifetime_executed.0.checked_add(amount).expect("ERR_OVERFLOW"));
+            agent.lifetime_executed = U128(
+                agent
+                    .lifetime_executed
+                    .0
+                    .checked_add(amount)
+                    .expect("ERR_OVERFLOW"),
+            );
             self.agents.insert(tx.agent.clone(), agent);
             emit(
                 "payment_executed",
@@ -686,18 +724,43 @@ impl AgentSpend {
             self.policy.recipients.contains(&tx.recipient),
             "ERR_RECIPIENT_DELISTED"
         );
-        let cap = self.policy.max_per_tx;
-        require!(tx.amount.0 <= cap, "ERR_EXCEEDS_CURRENT_POLICY");
-
         let mut agent = self.agents.get(&tx.agent).cloned().expect("ERR_NO_AGENT");
         require!(agent.active, "ERR_AGENT_DEACTIVATED");
+        Self::roll_agent(&mut agent, self.day);
+        let cap = if agent.max_per_tx.0 == 0 {
+            self.policy.max_per_tx
+        } else {
+            self.policy.max_per_tx.min(agent.max_per_tx.0)
+        };
+        require!(tx.amount.0 <= cap, "ERR_EXCEEDS_CURRENT_POLICY");
+        require!(
+            self.spent_today
+                .checked_add(self.reserved_total)
+                .expect("ERR_OVERFLOW")
+                <= self.policy.daily_limit,
+            "ERR_EXCEEDS_CURRENT_DAILY"
+        );
+        if agent.daily_limit.0 > 0 {
+            require!(
+                agent
+                    .spent_today
+                    .0
+                    .checked_add(agent.reserved.0)
+                    .expect("ERR_OVERFLOW")
+                    <= agent.daily_limit.0,
+                "ERR_EXCEEDS_AGENT_DAILY"
+            );
+        }
         agent.pending_count = agent.pending_count.saturating_sub(1);
         self.agents.insert(tx.agent.clone(), agent);
 
         tx.status = TxStatus::Executing;
         tx.decided_by = Some(env::predecessor_account_id());
         self.transactions.insert(id.clone(), tx);
-        emit("payment_approved", serde_json::json!({ "id": id, "by": self.owner }));
+        emit(
+            "payment_approved",
+            serde_json::json!({ "id": id, "by": self.owner }),
+        );
         self.begin_execution(&id);
     }
 
@@ -717,7 +780,10 @@ impl AgentSpend {
         tx.decided_by = Some(env::predecessor_account_id());
         tx.reason = "Rejected by owner".into();
         self.transactions.insert(id.clone(), tx);
-        emit("payment_rejected", serde_json::json!({ "id": id, "by": self.owner }));
+        emit(
+            "payment_rejected",
+            serde_json::json!({ "id": id, "by": self.owner }),
+        );
     }
 
     /// Expire a stale pending request. Permissionless: can only ever *reduce*
@@ -764,7 +830,10 @@ impl AgentSpend {
     /// Fail-closed: nothing is refunded unless the owner asserts failure.
     pub fn settle_stuck(&mut self, id: String, transfer_succeeded: bool, receipt_ref: String) {
         self.assert_owner();
-        require!(!receipt_ref.is_empty() && receipt_ref.len() <= 128, "ERR_BAD_RECEIPT_REF");
+        require!(
+            !receipt_ref.is_empty() && receipt_ref.len() <= 128,
+            "ERR_BAD_RECEIPT_REF"
+        );
         let mut tx = self.transactions.get(&id).cloned().expect("ERR_NO_TX");
         require!(
             tx.status == TxStatus::NeedsReconciliation,
@@ -772,12 +841,25 @@ impl AgentSpend {
         );
         if transfer_succeeded {
             tx.status = TxStatus::Executed;
-            self.total_spent = self.total_spent.checked_add(tx.amount.0).expect("ERR_OVERFLOW");
+            self.total_spent = self
+                .total_spent
+                .checked_add(tx.amount.0)
+                .expect("ERR_OVERFLOW");
             self.tx_count += 1;
+            let mut agent = self.agents.get(&tx.agent).cloned().expect("ERR_NO_AGENT");
+            agent.lifetime_executed = U128(
+                agent
+                    .lifetime_executed
+                    .0
+                    .checked_add(tx.amount.0)
+                    .expect("ERR_OVERFLOW"),
+            );
+            self.agents.insert(tx.agent.clone(), agent);
         } else {
             tx.status = TxStatus::Failed;
             self.refund_spent(&mut tx);
         }
+        tx.receipt_ref = Some(receipt_ref.clone());
         self.transactions.insert(id.clone(), tx);
         emit(
             "reconciled",
@@ -794,7 +876,10 @@ impl AgentSpend {
         self.assert_owner();
         let tx = self.transactions.get(&id).cloned().expect("ERR_NO_TX");
         require!(tx.status.is_terminal(), "ERR_NOT_TERMINAL");
-        require!(self.seen_ids.get(&id).copied().unwrap_or(false), "ERR_ID_NOT_RECORDED");
+        require!(
+            self.seen_ids.get(&id).copied().unwrap_or(false),
+            "ERR_ID_NOT_RECORDED"
+        );
         self.transactions.remove(&id);
         emit("pruned", serde_json::json!({ "id": id }));
     }
@@ -838,7 +923,8 @@ impl AgentSpend {
             spent_today: U128(self.spent_today),
             reserved_total: U128(self.reserved_total),
             remaining_daily: U128(
-                self.policy.daily_limit
+                self.policy
+                    .daily_limit
                     .saturating_sub(self.spent_today.saturating_add(self.reserved_total)),
             ),
             total_spent: U128(self.total_spent),
