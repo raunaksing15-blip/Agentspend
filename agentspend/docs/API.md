@@ -30,3 +30,11 @@ Requires `Authorization: Bearer <OWNER_API_TOKEN>`. Returns unsigned call argume
 
 ## Limitations
 The route module's `TESTNET` branch is an interface contract only. The included `LocalSimulationChain` throws if asked to submit a testnet request. A production API needs an audited authentication/session system, persistent database, real ChainPort adapter, transaction finality checks, and monitoring.
+
+## Persistence and runtime modes
+
+`PERSISTENCE_MODE=memory` is intended for local demos and tests. Set
+`PERSISTENCE_MODE=postgres` with `DATABASE_URL` for persistent transaction
+history; startup applies an idempotent schema matching
+`apps/api/migrations/001_initial.sql`. `EXECUTION_MODE=TESTNET` remains refused
+until a reviewed NEAR adapter is implemented.

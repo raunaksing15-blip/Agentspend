@@ -14,5 +14,5 @@ export class MemoryDb implements Db {
     this.rows.push(row);
     return row;
   }
-  list() { return [...this.rows]; }
+  async list() { return [...this.rows]; }
 }

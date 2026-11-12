@@ -2,7 +2,7 @@
 # AgentSpend Project Status
 
 **Assembled:** 2026-11-12 from the supplied conversation transcript.  
-**Overall:** Phases 1–2 local contract/API verification complete; frontend, sandbox, and deployment verification remain pending.
+**Overall:** Phases 1–3 local contract/API verification complete; frontend, sandbox, and deployment verification remain pending.
 
 | Component | Status |
 |---|---|
@@ -12,8 +12,8 @@
 | Sandbox async tests | Blocked: near-sandbox binary download failed |
 | API transaction route | Simulation-only; TypeScript build passes |
 | API security tests | 7 passed |
-| API authentication | Minimal shared-secret demo middleware; not production auth |
-| Database | In-memory simulation store only |
+| API authentication | Constant-time shared-secret demo middleware; wallet/session auth still required for production |
+| Database | PostgreSQL adapter and indexed migration added; memory store remains local default |
 | Testnet adapter | NOT IMPLEMENTED |
 | Next.js frontend | Presentation scaffold; build NOT run |
 | Testnet deployment | NOT performed |

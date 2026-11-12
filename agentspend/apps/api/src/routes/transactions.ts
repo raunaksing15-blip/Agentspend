@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { Router } from 'express';
 import { agentAuth, requireOwnerSession } from '../auth.js';
 import type { ChainPort, Db } from '../ports.js';
+import { log } from '../logger.js';
+import { asyncHandler } from '../http.js';
 
 const RequestSchema = z.object({
   id: z.string().min(4).max(64).regex(/^[A-Za-z0-9_-]+$/),
@@ -20,7 +22,7 @@ export type ExecutionMode = 'SIMULATED' | 'TESTNET';
 export function transactionsRouter(deps: { chain: ChainPort; db: Db; mode: ExecutionMode }) {
   const r = Router();
 
-  r.post('/request', agentAuth, async (req, res) => {
+  r.post('/request', agentAuth, asyncHandler(async (req, res) => {
     const parsed = RequestSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'VALIDATION', issues: parsed.error.issues });
 
@@ -31,6 +33,11 @@ export function transactionsRouter(deps: { chain: ChainPort; db: Db; mode: Execu
     if (deps.mode === 'SIMULATED') {
       const decision = await deps.chain.simulate({ ...parsed.data, agentId });
       const row = await deps.db.recordSimulated({ ...parsed.data, agentId, decision });
+      log('info', 'transaction.simulated', {
+        requestId: req.requestId,
+        id: parsed.data.id,
+        decision: decision.decision,
+      });
       return res.status(200).json({
         executionMode: 'SIMULATED',
         nearTxHash: null,              // NEVER fabricate a hash
@@ -53,7 +60,7 @@ export function transactionsRouter(deps: { chain: ChainPort; db: Db; mode: Execu
       contractStatus: authoritative?.status ?? null,
       settled: authoritative?.status === 'Executed',
     });
-  });
+  }));
 
   // Approval authority is on-chain and owner-held. This endpoint is intentionally gone.
   const gone = (_req: any, res: any) => res.status(410).json({
@@ -64,7 +71,7 @@ export function transactionsRouter(deps: { chain: ChainPort; db: Db; mode: Execu
   r.post('/:id/approve', gone);
   r.post('/:id/reject', gone);
 
-  r.post('/:id/approval-intent', requireOwnerSession, async (req, res) => {
+  r.post('/:id/approval-intent', requireOwnerSession, asyncHandler(async (req, res) => {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const tx = await deps.chain.viewTransaction(id);
     if (!tx) return res.status(404).json({ error: 'NOT_FOUND' });
@@ -78,7 +85,7 @@ export function transactionsRouter(deps: { chain: ChainPort; db: Db; mode: Execu
       },
       cliHint: `near contract call-function as-transaction ${deps.chain.contractId} approve_payment json-args '{"id":"${id}"}' prepaid-gas '30 Tgas' attached-deposit '0 NEAR' sign-as <OWNER> network-config testnet`,
     });
-  });
+  }));
 
   return r;
 }

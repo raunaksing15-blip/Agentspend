@@ -20,4 +20,5 @@ export interface ChainPort {
 
 export interface Db {
   recordSimulated(input: RequestInput & { decision: { decision: Decision; reason: string; status: string } }): Promise<Record<string, unknown>>;
+  list(): Promise<Array<Record<string, unknown>>>;
 }

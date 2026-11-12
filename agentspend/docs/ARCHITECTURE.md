@@ -29,7 +29,9 @@ The contract, not an LLM or backend HTTP handler, is intended to be the authorit
 ## Implemented in this package
 - Contract source and Rust/sandbox test sources are present.
 - API has a local simulator and rejects TESTNET startup until a real adapter exists.
+- API has explicit agent/owner middleware, request validation, rate limiting, structured JSON logs, and a PostgreSQL repository adapter.
+- PostgreSQL schema includes transaction history indexes; `PERSISTENCE_MODE=memory` is limited to local demos/tests.
 - Frontend is a static presentation scaffold.
 
 ## Not verified
-No compile, unit test, sandbox run, deployment, wallet signing, or testnet receipt is verified by this archive.
+The PostgreSQL adapter has not been exercised against a live database in this environment. No live ChainPort adapter, deployment, wallet signing, or testnet receipt is verified by this archive.
