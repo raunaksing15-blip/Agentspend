@@ -1,0 +1,23 @@
+[package]
+name = "agentspend"
+version = "0.2.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = "=5.17.2"          # VERIFY: cargo search near-sdk, then pin the current 5.x
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+near-sdk = { version = "=5.17.2", features = ["unit-testing"] }
+
+[profile.release]
+codegen-units = 1
+opt-level = "z"
+lto = true
+panic = "abort"
+overflow-checks = true
+strip = true
