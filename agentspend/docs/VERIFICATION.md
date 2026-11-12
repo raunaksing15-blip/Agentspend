@@ -1,7 +1,7 @@
 
 # Verification Evidence
 
-**Current status: contract local verification is complete; integration, API, deployment, and real-payment verification remain pending.**
+**Current status: contract and API local verification is complete; sandbox, deployment, and real-payment verification remain pending.**
 
 | Gate | Command / evidence | Status |
 |---|---|---|
@@ -9,7 +9,8 @@
 | Contract unit tests | `cd contracts/agentspend && cargo test` | PASS — 23 passed |
 | WASM build | `cd contracts/agentspend && cargo build --target wasm32-unknown-unknown --release` | PASS |
 | Sandbox tests | `npm run test:sandbox` | BLOCKED — near-sandbox binary download failed; dependent workers reported lock contention |
-| API typecheck/build | `npm run build:api` | NOT RUN |
+| API typecheck/build | `npm run build:api` | PASS |
+| API security tests | `npm run test:api` | PASS — 7 passed |
 | Frontend build | `npm run build:web` | NOT RUN |
 | Testnet deployment | Contract account + code hash | NOT DEPLOYED |
 | Real payment | Transaction hash + receipt IDs + balance delta | NOT EXECUTED |
