@@ -1,7 +1,7 @@
 
 # Security Threat Model
 
-**Status:** Self-review notes only. No external audit or certification. Contract source is uncompiled/unverified.
+**Status:** Self-review notes only. No external audit or certification. The contract has passed local Rust tests and a release Wasm build; sandbox and testnet evidence remain pending.
 
 | Threat | Intended mitigation | Residual risk |
 |---|---|---|
