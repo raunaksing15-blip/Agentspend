@@ -4,12 +4,12 @@
 | Workstream | Owner | Status | Acceptance gate |
 |---|---|---|---|
 | Rust contract and contract tests | Builder 1 — blockchain | Authored / unverified | `cargo test` and WASM build pass; review async settlement and invariants |
-| Sandbox async tests | Builder 1 + Builder 3 | Authored / unverified | Real sandbox receipts prove success, failure, replay and approval paths |
+| Sandbox async tests | Builder 1 + Builder 3 | Blocked by missing `near-workspaces`/sandbox dependency | Real sandbox receipts prove success, failure, replay and approval paths |
 | API, auth and persistence | Builder 2 — full-stack | Partial scaffold | API tests pass; real agent auth and owner wallet/session integration |
-| Web dashboard | Builder 2 — full-stack | Presentation scaffold | Responsive UI connected to real API states; no simulated values shown as on-chain |
+| Web dashboard | Builder 2 — full-stack | Implemented and build-verified | Responsive UI connected to real API states; no simulated values shown as on-chain |
 | Scoped agent key | Builder 1 | Script authored / unverified | Testnet key cannot call owner methods and has bounded allowance |
 | Integration and QA | Builder 3 | Not verified | E2E tests, threat model review, regression suite |
-| Documentation and demo | Builder 3 | Drafted | Actual build/test/receipt evidence and recorded demo |
+| Documentation and demo | Builder 3 | Local simulation verified | Actual build/test evidence; no testnet receipt claimed |
 
 ## Shared interface contract
 - Amounts are decimal strings in yoctoNEAR.
