@@ -28,6 +28,13 @@ Return HTTP 410. Backend approval is intentionally not an authority. The owner m
 ## `POST /api/transactions/:id/approval-intent`
 Requires `Authorization: Bearer <OWNER_API_TOKEN>`. Returns unsigned call arguments only. It does not sign or submit the call.
 
+## Owner dashboard endpoints
+
+`GET /api/dashboard/stats` and `GET /api/transactions` require the owner
+token. The Next.js dashboard proxies these paths to the API in local
+development and displays the returned execution mode. It does not infer a
+receipt from a successful HTTP response.
+
 ## Limitations
 The route module's `TESTNET` branch is an interface contract only. The included `LocalSimulationChain` throws if asked to submit a testnet request. A production API needs an audited authentication/session system, persistent database, real ChainPort adapter, transaction finality checks, and monitoring.
 

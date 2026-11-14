@@ -1,21 +1,21 @@
 
 # AgentSpend Project Status
 
-**Assembled:** 2026-11-12 from the supplied conversation transcript.  
-**Overall:** Phases 1–3 local contract/API verification complete; frontend, sandbox, and deployment verification remain pending.
+**Updated:** 2026-11-14 from commands executed in this worktree.
+**Overall:** Local demo, API, contract unit tests, and frontend build are verified; Wasm target, sandbox dependencies, PostgreSQL runtime, and testnet deployment remain blocked or pending.
 
 | Component | Status |
 |---|---|
-| Rust contract source | Hardened; compiles against `near-sdk = 5.17.2` |
-| Rust unit tests | 23 passed |
-| Wasm release build | Passed; `target/wasm32-unknown-unknown/release/agentspend.wasm` |
-| Sandbox async tests | Blocked: near-sandbox binary download failed |
+| Rust contract source | Hardened; local host tests compile against `near-sdk = 5.17.2` |
+| Rust unit tests | Verified: 23 passed |
+| Wasm release build | Blocked: `wasm32-unknown-unknown` target is not installed |
+| Sandbox async tests | Blocked: `near-workspaces` is not installed; sandbox binary availability is unverified |
 | API transaction route | Simulation-only; TypeScript build passes |
 | API security tests | 7 passed |
 | API authentication | Constant-time shared-secret demo middleware; wallet/session auth still required for production |
 | Database | PostgreSQL adapter and indexed migration added; memory store remains local default |
 | Testnet adapter | NOT IMPLEMENTED |
-| Next.js frontend | Presentation scaffold; build NOT run |
+| Next.js frontend | API-connected dashboard; production build and type-check verified |
 | Testnet deployment | NOT performed |
 | Real payment receipts | None supplied |
 | External security audit | Not performed |

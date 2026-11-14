@@ -3,4 +3,30 @@
 @tailwind components;
 @tailwind utilities;
 :root { color-scheme: dark; }
+* { box-sizing: border-box; }
 body { background: #0B0F19; color: #f8fafc; }
+button, input { font: inherit; }
+button { cursor: pointer; }
+.eyebrow { color: #64748b; font-size: 10px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; }
+.button-primary, .button-secondary, .button-danger { display: inline-flex; align-items: center; gap: .55rem; border-radius: .65rem; padding: .75rem 1rem; font-size: .875rem; font-weight: 600; transition: .2s ease; }
+.button-primary { background: #00E5FF; color: #061018; }
+.button-primary:hover { background: #67efff; }
+.button-secondary { border: 1px solid #334155; color: #cbd5e1; }
+.button-secondary:hover { border-color: #00E5FF; color: white; }
+.button-danger { border: 1px solid #7f1d1d; color: #fca5a5; }
+.side-link { display: flex; width: 100%; align-items: center; gap: .75rem; border-radius: .65rem; padding: .7rem .75rem; text-align: left; font-size: .8125rem; color: #94a3b8; transition: .2s ease; }
+.side-link:hover, .side-link-active { background: #172033; color: white; }
+.side-link-active { box-shadow: inset 2px 0 #00E5FF; }
+.status { display: inline-flex; align-items: center; border-radius: 999px; padding: .25rem .55rem; font-size: 9px; font-weight: 700; letter-spacing: .12em; }
+.status-warning { background: #f59e0b1a; color: #fbbf24; }
+.status-info { background: #00e5ff1a; color: #67e8f9; }
+.status-success { background: #10b9811a; color: #34d399; }
+.status-danger { background: #ef44441a; color: #f87171; }
+.status-dot { height: .5rem; width: .5rem; flex: 0 0 auto; border-radius: 999px; }
+.status-dot.status-success { background: #34d399; }.status-dot.status-warning { background: #fbbf24; }.status-dot.status-danger { background: #f87171; }
+.panel { overflow: hidden; border: 1px solid #1e293b; border-radius: 1rem; background: #111827; }
+.panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid #1e293b; padding: 1.25rem; }
+.metric-card { border: 1px solid #1e293b; border-radius: 1rem; background: #111827; padding: 1.25rem; }
+.metric-card p { font-size: .75rem; }.metric-card strong { display: block; margin-top: .65rem; font-size: 1.65rem; font-weight: 600; }.metric-card strong small { font-size: .7rem; font-weight: 500; }.metric-card span { display: block; margin-top: .4rem; color: #64748b; font-size: .7rem; }
+.input { width: 100%; border: 1px solid #334155; border-radius: .65rem; background: #0f172a; padding: .75rem .85rem; color: white; outline: none; }.input:focus { border-color: #00e5ff; box-shadow: 0 0 0 3px #00e5ff1a; }
+.glow { position: absolute; inset: 10% -10%; background: #00e5ff12; filter: blur(80px); }

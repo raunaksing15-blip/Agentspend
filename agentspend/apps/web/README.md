@@ -1,1 +1,1 @@
-The Next.js application is a visual presentation scaffold. It does not currently submit requests to the API or NEAR contract. Build and browser-test it before use.
+The Next.js application is the AgentSpend control plane. It connects to the local API through the `/api` rewrite, authenticates owner views with the configured `OWNER_API_TOKEN`, and labels simulation data explicitly. Start the API on port 4000 and the web app on port 3000 before using the dashboard.

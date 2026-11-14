@@ -1,21 +1,30 @@
+# AgentSpend demonstration
 
-# Demo Script
-
-**Do not imply that the included UI or API performs real NEAR transfers.** Current API mode is local simulation; the web dashboard is a static presentation scaffold.
+This is a reproducible **local simulation**. It does not sign, broadcast, or
+settle a NEAR transfer. Run `./scripts/demo.sh` from the repository root.
+The API uses `demo-agent-token` and `demo-owner-token` by default.
 
 ## Narrative (90 seconds)
-1. Introduce the risk: an autonomous procurement agent can request purchases.
-2. Show the policy boundary: max 2 NEAR per request, 5 NEAR daily, 1 NEAR approval threshold, allowlisted recipients.
-3. Explain that the Rust contract is intended to be the enforcement authority.
-4. Show the six expected scenarios:
-   - 0.5 NEAR to allowlisted recipient: auto-execution path.
-   - 3 NEAR: rejected above per-transaction maximum.
-   - 1.5 NEAR: pending owner approval.
-   - Unknown recipient: rejected.
-   - Duplicate ID: second request rejected.
-   - Daily budget overrun: rejected.
-5. Explain the strongest security property: the agent cannot call owner-only approval methods.
-6. Show a real explorer receipt only after deployment and an actual transaction have been independently verified.
 
-## Judge-facing kill shot
-Attempt `approve_payment` using an agent-scoped key. The expected contract-level result is `ERR_OWNER_ONLY`. Capture the actual protocol error; do not use a fabricated screenshot or mock error.
+1. Introduce the risk: an autonomous procurement agent can request purchases.
+2. Show the simulation policy: maximum 2 NEAR per request, 5 NEAR daily,
+   1 NEAR approval threshold, and two allowlisted recipients.
+3. Run the script and point out that every response includes
+   `executionMode=SIMULATED`, `onChain=false`, and no transaction hash.
+4. Walk through the cap rejection, valid request, recipient rejection,
+   pending approval, duplicate ID, and daily-budget rejection.
+5. Open `/dashboard`, authenticate with `demo-owner-token`, and show the
+   owner-only activity and pending approval views.
+6. Explain that the Rust contract is intended to be the independent enforcement
+   authority; the current API intentionally refuses TESTNET mode.
+
+## Testnet mode
+
+There is no verified live adapter in this repository. Do not describe the local
+demo as a testnet payment, and do not add explorer links unless a real receipt,
+receipt outcome, and contract state have been captured.
+
+For a future testnet presentation, attempt `approve_payment` using an
+agent-scoped key only after deployment and key scoping have been independently
+verified. Capture the actual protocol error; do not use a fabricated screenshot
+or mock error.

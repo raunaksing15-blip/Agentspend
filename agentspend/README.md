@@ -29,7 +29,7 @@ The API listens on `http://localhost:4000`. Verify it is running with:
 curl http://localhost:4000/api/health
 ```
 
-### Run the web scaffold
+### Run the web control plane
 
 In a second terminal:
 
@@ -37,7 +37,20 @@ In a second terminal:
 npm run dev:web
 ```
 
-The dashboard is a presentation scaffold and does not yet connect to the API.
+Open `http://localhost:3000`, choose **Sign in**, and enter `OWNER_API_TOKEN`.
+The dashboard reads owner-protected data from the API and labels simulation data
+explicitly. It never presents a simulated result as an on-chain receipt.
+
+### Run the reproducible demo
+
+After installing dependencies, run:
+
+```bash
+./scripts/demo.sh
+```
+
+The script starts a local simulation API if one is not already running and
+executes the policy scenarios described in [`docs/DEMO.md`](docs/DEMO.md).
 
 ## How it works
 
@@ -54,7 +67,7 @@ The transaction request route does not sign, broadcast, or execute a NEAR transf
 
 - `contracts/agentspend/` — Rust/NEAR contract and unit/sandbox test sources.
 - `apps/api/` — Express API scaffold and local simulation server.
-- `apps/web/` — Next.js landing page and dashboard scaffold.
+- `apps/web/` — Next.js landing page, owner session, and API-connected dashboard.
 - `scripts/` — deployment and scoped-agent-key scripts.
 - `docs/` — architecture, security, demo, deployment, and verification notes.
 
